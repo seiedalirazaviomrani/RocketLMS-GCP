@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: RocketLMS
+  labels:
+    app: RocketLMS
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: RocketLMS
+  template:
+    metadata:
+      labels:
+        app: RocketLMS
+    spec:
+      containers:
+        - image: sepid/rocketlms:rtl-1.8
+          name: RocketLMS
+          env:
+          - name: RocketLMS_DB_HOST
+            value: 127.0.0.1:3306
+          # These secrets are required to start the pod.
+          - name: RocketLMS_DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: cloudsql-db-credentials
+                key: username
+          - name: RocketLMS_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: cloudsql-db-credentials
+                key: password
+          ports:
+            - containerPort: 80
+              name: RocketLMS
+          volumeMounts:
+            - name: RocketLMS-persistent-storage
+              mountPath: /var/www/html
+        # Change ${INSTANCE_CONNECTION_NAME} here to include your GCP
+        # project, the region of your Cloud SQL instance and the name
+        # of your Cloud SQL instance. The format is
+        # $PROJECT:$REGION:$INSTANCE
+        - name: cloudsql-proxy
+          image: gcr.io/cloudsql-docker/gce-proxy:1.33.2
+          command: ["/cloud_sql_proxy",
+                    "-instances=${INSTANCE_CONNECTION_NAME}=tcp:3306",
+                    # If running on a VPC, the Cloud SQL proxy can connect via Private IP. See:
+                    # https://cloud.google.com/sql/docs/mysql/private-ip for more info.
+                    # "-ip_address_types=PRIVATE",
+                    "-credential_file=/secrets/cloudsql/key.json"]
+          securityContext:
+            runAsUser: 2  # non-root user
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: cloudsql-instance-credentials
+              mountPath: /secrets/cloudsql
+              readOnly: true
+      volumes:
+        - name: RocketLMS-persistent-storage
+          persistentVolumeClaim:
+            claimName: RocketLMS-volumeclaim
+        - name: cloudsql-instance-credentials
+          secret:
+            secretName: cloudsql-instance-credentials
+

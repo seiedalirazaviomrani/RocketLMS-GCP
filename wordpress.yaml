@@ -1,0 +1,55 @@
+
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START gke_RocketLMS_persistent_disks_RocketLMS_deployment_RocketLMS]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: RocketLMS
+  labels:
+    app: RocketLMS
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: RocketLMS
+  template:
+    metadata:
+      labels:
+        app: RocketLMS
+    spec:
+      containers:
+        - image: RocketLMS
+          name: RocketLMS
+          env:
+          - name: RocketLMS_DB_HOST
+            value: mysql:3306
+          - name: RocketLMS_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mysql
+                key: password
+          ports:
+            - containerPort: 80
+              name: RocketLMS
+          volumeMounts:
+            - name: RocketLMS-persistent-storage
+              mountPath: /var/www/html
+      volumes:
+        - name: RocketLMS-persistent-storage
+          persistentVolumeClaim:
+            claimName: RocketLMS-volumeclaim
+# [END gke_RocketLMS_persistent_disks_RocketLMS_deployment_RocketLMS]
+---
